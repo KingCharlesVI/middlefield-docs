@@ -1,0 +1,34 @@
+---
+sidebar_position: 1
+---
+
+# Overview
+
+For ebooks, I run Calibre's built-in **Content Server**, available at [https://library.middlefield.xyz](https://library.middlefield.xyz). It lets you browse the library, read books in your browser, download them in whatever format you need, and even add the library to an e-reader app so you can browse and download straight from the device.
+
+## Browsing in a web browser
+
+1. Go to [https://library.middlefield.xyz](https://library.middlefield.xyz)
+2. Browse by title, author, series, or tags using the panel on the left
+3. Click a book to see its details
+
+## Reading or downloading a book
+
+From a book's detail page:
+
+- **Read in browser** — supported formats (like EPUB) can be opened and read directly in the built-in reader, no download needed
+- **Download** — pick a format (EPUB, MOBI, PDF, etc., depending on what's available for that book) to save it and open it in your own reading app or send it to a device
+
+## Using it on an e-reader or reading app
+
+The Content Server also exposes an **OPDS catalog**, which many e-reader apps can connect to directly — letting you browse and download books without going through a web browser. In your e-reader app's settings, add a new OPDS catalog with this address:
+
+```
+https://library.middlefield.xyz/opds
+```
+
+Most e-reader apps that support custom catalogs (e.g. on Android, iOS, or dedicated e-ink readers) can use this. If your app doesn't have OPDS support, downloading a book from the web browser and transferring it manually (or emailing it to a Kindle) works too.
+
+:::tip
+If a book isn't in a format your device supports, download it in whichever format is available and convert it with Calibre (or ask me to convert and re-upload it).
+:::

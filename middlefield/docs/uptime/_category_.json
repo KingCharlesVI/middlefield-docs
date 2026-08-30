@@ -1,0 +1,8 @@
+{
+  "label": "Uptime",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Monitoring and alerting for homelab services."
+  }
+}

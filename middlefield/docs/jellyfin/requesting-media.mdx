@@ -1,0 +1,49 @@
+---
+sidebar_position: 3
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Requesting media
+
+Can't find a movie or show in the library? Request it and I will put it in Jellyfin for you.
+
+Requests are handled by **Seerr**, available at [https://requests.middlefield.xyz](https://requests.middlefield.xyz). You can request in whichever of these three ways is most convenient for you — they all go to the same place.
+
+<Tabs groupId="request-method">
+<TabItem value="moonfin" label="Moonfin">
+
+Moonfin has Seerrr built in, so you can request titles without leaving the app.
+
+1. Open Moonfin and sign in as usual
+2. Go to **Settings** and add the Seerrr integration, using the server address `https://requests.middlefield.xyz` and your Seerrr login
+3. Search for a movie or show — if it's missing from the library, you'll see a **Request** option right in the search results
+4. Tap **Request**
+
+</TabItem>
+<TabItem value="jellyfin-enhanced" label="Web browser">
+
+The Jellyfin web app has the **Jellyfin Enhanced** plugin installed, which adds Seerrr requesting directly into search.
+
+1. Go to [https://jellyfin.middlefield.xyz](https://jellyfin.middlefield.xyz) and sign in
+2. Search for a movie or show
+3. If it's not in the library, a **Request** button will appear next to the result
+4. Click **Request**
+
+</TabItem>
+<TabItem value="seerr" label="Seerr website">
+
+You can also request directly from Seerrr itself.
+
+1. Go to [https://requests.middlefield.xyz](https://requests.middlefield.xyz)
+2. Sign in with your Seerrr account (this can be the same login as Jellyfin, depending on how it's configured)
+3. Search for a movie or show
+4. Click **Request**
+
+</TabItem>
+</Tabs>
+
+## What happens after I request something?
+
+Once approved, I will add it to the Jellyfin server. You can check the status of your request (pending, processing, available) from the Seerr website at any time.

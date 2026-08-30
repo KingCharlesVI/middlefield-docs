@@ -1,0 +1,34 @@
+---
+sidebar_position: 1
+---
+
+# Overview
+
+I use **Uptime Kuma** to monitor whether the homelab's services are up and running — Files, Jellyfin, Library, Requests (Seerr), and Uptime Kuma itself. If something goes down, this is the place to check.
+
+## Accessing the status page
+
+The public status page is at [https://status.middlefield.xyz](https://status.middlefield.xyz) — no login needed, just open it in a browser.
+
+Each monitored service is listed with its current state:
+
+- 🟢 **Up** — the service is healthy and reachable
+- 🔴 **Down** — the service is currently unreachable
+- 🟡 **Pending** — a check just failed once and Uptime Kuma is confirming before marking it down
+
+## What the page shows
+
+For each service you'll see:
+
+- **Current status** — up, down, or pending
+- **Uptime percentage** — over the last 24 hours, 30 days, and 1 year
+- **Response time graph** — how quickly the service has been responding over time
+- **Incident history** — a log of past outages, including when they started and how long they lasted
+
+## What to do if something shows as down
+
+If a service you rely on (Jellyfin, Files, etc.) shows as down on the status page, it usually means I'm already aware, since I get notified the same way. If it's been down for a while, feel free to let me know — but there's no need to report it the moment you see it turn red, as it might just be a brief restart or an intermittent check failure.
+
+:::info
+The status page is read-only for you — configuring monitors, notifications, and status pages requires admin access to the Uptime Kuma dashboard itself, which is separate from this public page.
+:::

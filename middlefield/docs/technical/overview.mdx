@@ -1,0 +1,28 @@
+---
+sidebar_position: 1
+---
+
+# Overview
+
+Deeper technical reference for the Middlefield homelab — mainly useful if something breaks and you need to know what's actually running where.
+
+## Service ports
+
+Each service is reachable internally on its own port; a reverse proxy maps the public subdomains (`jellyfin.middlefield.xyz`, `files.middlefield.xyz`, etc.) to these ports so you don't need to know them for day-to-day use. They're listed here for reference.
+
+| Service | Subdomain | Default port |
+|---|---|---|
+| Jellyfin | `jellyfin.middlefield.xyz` | `8096` (HTTP), `8920` (HTTPS) |
+| Gokapi | `files.middlefield.xyz` | `53842` |
+| Calibre Content Server | `library.middlefield.xyz` | `8080` |
+| Seerr | `requests.middlefield.xyz` | `5055` |
+| Uptime Kuma | `status.middlefield.xyz` | `tbc` |
+| Docs | `docs.middlefield.xyz` | `tbc` |
+
+## Hardware & hosting
+
+:::info
+
+This section is WIP.
+
+:::

@@ -1,0 +1,38 @@
+---
+sidebar_position: 1
+---
+
+# Overview
+
+For sharing files (think sending someone a large video, a folder of photos, or a one-off document), I run **Gokapi** — a self-hosted, lightweight alternative to services like WeTransfer or Firefox Send. It's available at [https://files.middlefield.xyz](https://files.middlefield.xyz).
+
+Gokapi works differently depending on whether you're the one sharing a file or the one receiving a link:
+
+- **Uploading a file** requires logging in with an account (ask me for credentials if you need to upload something).
+- **Downloading a shared file** just requires the link someone sends you — no account or login needed.
+
+## Uploading a file
+
+1. Go to [https://files.middlefield.xyz](https://files.middlefield.xyz)
+2. Drag and drop a file (or click to browse) into the upload area
+3. Optionally configure the share before uploading:
+   - **Expiry** — how many days the link stays valid
+   - **Allowed downloads** — how many times the file can be downloaded before the link expires
+   - **Password protection** — require a password to download
+4. Once uploaded, Gokapi gives you a shareable link — copy it and send it to whoever needs the file
+
+:::tip
+If you're not sure what expiry or download limit to set, the defaults are reasonable for a one-off share. Tighten them (fewer downloads, shorter expiry, add a password) for anything sensitive.
+:::
+
+## Downloading a shared file
+
+1. Open the link someone sent you
+2. If it's password protected, enter the password they gave you
+3. Click **Download**
+
+That's it — no account needed.
+
+## Link expiry
+
+Shared links aren't permanent. Depending on how the uploader configured the share, a link stops working after a set number of downloads, after a set number of days, or both. If a link you were sent has stopped working, ask the person who shared it to re-upload and send you a fresh one.
