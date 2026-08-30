@@ -68,8 +68,8 @@ const config = {
       navbar: {
         title: 'Middlefield',
         logo: {
-          alt: 'My Site Logo',
-          src: 'img/logo.svg',
+          alt: 'Middlefield Logo',
+          src: 'img/docs-logo.png',
         },
         items: [
           {
