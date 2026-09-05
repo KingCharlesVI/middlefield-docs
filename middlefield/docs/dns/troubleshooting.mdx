@@ -1,0 +1,99 @@
+---
+sidebar_position: 9
+title: Troubleshooting
+---
+
+# Troubleshooting
+
+Common failure modes, roughly ordered from "whole network is down" to "one specific site is being weird."
+
+## Devices configured to use Blocky can't resolve DNS
+
+Since DNS is currently set per-device rather than at the router (see [Network Setup](./network-setup)), an outage only affects devices explicitly pointed at Blocky — everything else is unaffected, which is itself a useful signal: if *every* device on the network is broken, the problem probably isn't Blocky.
+
+1. **Check the container is actually up:**
+   ```bash
+   docker compose ps
+   docker compose logs --tail=100 blocky
+   ```
+2. **Query it directly from the Docker host:**
+   ```bash
+   dig @127.0.0.1 example.com
+   ```
+   If this fails but the container is running, check for a config error in the logs — Blocky logs a clear error and can fail to start if `config.yml` has invalid YAML or an unknown key after an upgrade (see [Installation → Upgrading](./installation#upgrading)).
+3. **Restart it:**
+   ```bash
+   docker compose restart blocky
+   ```
+
+## Port 53 already in use
+
+```text
+Error: listen udp :53: bind: address already in use
+```
+
+Something else on the host is already bound to port 53 — most commonly `systemd-resolved` on a Linux host also running other services. Check what's holding it:
+
+```bash
+sudo lsof -i :53
+# or
+sudo ss -tulpn | grep :53
+```
+
+If it's `systemd-resolved`, either disable its stub listener (`DNSStubListener=no` in `/etc/systemd/resolved.conf`, then `systemctl restart systemd-resolved`) or run Blocky on a dedicated IP/host that doesn't have a conflicting resolver already bound.
+
+## A specific site is broken (suspected false positive)
+
+Walk through [Blocklists → Diagnosing a false positive](./blocklists#diagnosing-a-false-positive) — check the query log for what's actually being blocked while reproducing the issue, confirm which list it's from, and add an allowlist entry if it's a false positive.
+
+Quick sanity check without digging into logs: temporarily disable blocking for a few minutes via blocky-ui, or `curl -X POST "http://<blocky-ip>:4000/api/blocking/disable?duration=5m"` (see [Monitoring & Logging → REST API](./monitoring-logging#rest-api)), and see if the site starts working. If it does, it's a blocking issue; if not, look elsewhere (upstream, the site itself, client-side network issues). Remember to re-enable afterward and flush the client's local DNS cache — otherwise it may keep using a cached blocked answer from before.
+
+## Slow resolution
+
+- **Confirm it's actually a cache miss issue**, not blocking or custom DNS — check `responseReason` in the [query log](./monitoring-logging#query-log) for the slow domain.
+- **Check upstream health** — if all configured upstreams (see [Configuration → Upstream resolvers](./configuration#upstream-resolvers)) are slow or unreachable, every cache miss pays the full round-trip cost. Test each directly:
+  ```bash
+  dig @1.1.1.1 example.com
+  dig @dns.quad9.net example.com
+  ```
+- **Check the cache hit rate** via [blocky-ui's query log](./monitoring-logging#blocky-ui) (see [Caching & Performance → Measuring cache effectiveness](./caching-performance#measuring-cache-effectiveness)) — a recently-restarted Blocky has a cold cache and is expected to be slower for a while until it warms back up.
+- **Check host resource pressure** — `docker stats blocky` for CPU/memory; DNS is lightweight, so sustained high usage usually means something else (a runaway query log, a misbehaving device hammering it with retries) rather than normal load.
+
+## A device seems to bypass blocking
+
+Most common causes:
+
+- **Its DNS setting doesn't point at Blocky** — see [Network Setup → Verifying a device is actually using Blocky](./network-setup#verifying-a-device-is-actually-using-blocky).
+- **DNS-over-HTTPS (DoH) baked into the app/browser** — Firefox, Chrome, and many apps can ship with a hardcoded DoH resolver (e.g. Cloudflare's) that bypasses whatever the OS/network says entirely. Check the browser's network/DNS settings and disable "secure DNS" / DoH if it's set to a provider other than "system default."
+- **A VPN app** — many consumer VPN apps override DNS settings system-wide while active, pointing at their own resolver.
+- **IPv6 bypass** — see [Network Setup → IPv6 considerations](./network-setup#ipv6-considerations).
+
+## Container keeps restarting / crash-looping
+
+```bash
+docker compose logs --tail=200 blocky
+```
+
+Common causes, in order of likelihood:
+
+1. **Invalid `config.yml`** — especially right after an upgrade; check the [release notes](https://github.com/0xERR0R/blocky/releases) for renamed/removed keys.
+2. **A denylist URL is unreachable and Blocky is configured to fail hard on load errors** — check `blocking.loading` settings (see [Blocklists](./blocklists#how-blocking-works)) and whether the failing list's host is reachable from the container.
+3. **Healthcheck failing** — `docker inspect blocky --format='{{json .State.Health}}'` for details; a failing healthcheck alone won't restart the container under `restart: unless-stopped`, but is a useful signal something's degraded.
+
+## blocky-ui is blank or erroring
+
+blocky-ui has no state of its own — it's just a client for Blocky's API and query log (see [Monitoring & Logging → blocky-ui](./monitoring-logging#blocky-ui)). If it won't load data:
+
+1. Confirm Blocky itself is healthy first (`docker compose ps`, and the `dig`/API checks in [Installation → Verifying it's working](./installation#verifying-its-working)) — a blank dashboard is very often just a symptom of Blocky being down or unreachable.
+2. Check `docker compose logs blocky-ui` for connection errors to the `API_URL` it's configured with.
+3. Confirm `blocky-ui` and `blocky` are on the same Docker network and the container name in `API_URL` (`http://blocky:4000`) matches the `blocky` service name in `docker-compose.yml`.
+
+## Query log isn't showing anything
+
+- Confirm `queryLog.type` and `target` are correct in `config.yml` (see [Configuration → Query logging](./configuration#query-logging)).
+- For a database backend, confirm the database is reachable and the schema/table exists — Blocky logs a connection error on startup if not.
+- For `csv`/`csv-client`, confirm the container has write access to the mounted log directory.
+
+## Still stuck
+
+Bump the log level to `debug` temporarily (see [Monitoring & Logging → Log levels](./monitoring-logging#log-levels)), reproduce the issue, and read through `docker compose logs -f blocky` while it happens — Blocky is fairly verbose about *why* it made a given decision at `debug` level. Remember to set it back to `info` afterward.

@@ -1,0 +1,59 @@
+---
+sidebar_position: 6
+title: Caching & Performance
+---
+
+# Caching & Performance
+
+Every non-blocked, non-local answer Blocky returns is cached in memory, so repeat lookups across the whole network are answered locally instead of going upstream every time. The cache is purely in-process — it starts empty on every container restart/upgrade, so expect a brief window of all-cache-misses (still resolved correctly, just marginally slower) right after a restart until it warms back up.
+
+## Configuration
+
+```yaml
+caching:
+  minTime: 5m
+  maxTime: 30m
+  maxItemsCount: 100000
+  prefetching: true
+  prefetchExpires: 2h
+  prefetchThreshold: 5
+```
+
+| Setting | Effect |
+|---|---|
+| `minTime` | Floor on how long an answer is cached, regardless of the upstream's own TTL. Protects against upstreams that set unnecessarily short TTLs. |
+| `maxTime` | Ceiling on cache time — even if an upstream returns a huge TTL, entries expire at least this often, so DNS changes upstream (e.g. a service migrating IPs) still propagate in a reasonable time. `0` disables caching for that record entirely; a negative value caches using the upstream's own TTL unmodified. |
+| `maxItemsCount` | Upper bound on total cached entries, to keep memory use predictable. `0` means unlimited. |
+| `prefetching` | See below. |
+| `prefetchExpires` | How long a domain's query-frequency counter (used to decide what's "popular") is tracked for. |
+| `prefetchThreshold` | Minimum number of queries within `prefetchExpires` before a domain qualifies for prefetching. |
+
+## Prefetching
+
+With `prefetching: true`, Blocky watches for domains that get queried frequently (past `prefetchThreshold` times within `prefetchExpires`) and proactively re-resolves them *before* their cached entry expires. The practical effect: popular domains (that internal apps or ad platforms hit constantly) essentially never produce a cache miss from the client's point of view, even though the TTL is technically expiring in the background.
+
+This trades a small amount of constant background upstream traffic for consistently fast responses on hot domains — worth it on a home network where a handful of domains (telemetry endpoints, CDNs for frequently-used apps) dominate query volume.
+
+:::tip Want the cache to survive restarts?
+Blocky supports an optional Redis backend so cache state persists across container restarts instead of starting cold every time — not currently deployed here (the stack is just Blocky + blocky-ui), but worth knowing about if restarts start becoming disruptive. See the [Blocky Redis docs](https://0xerr0r.github.io/blocky/latest/configuration/#redis) if you want to add it later.
+:::
+
+## Measuring cache effectiveness
+
+The query log in [blocky-ui](./monitoring-logging#blocky-ui) shows the response reason (`CACHED` vs `RESOLVED`) per query, which is the quickest way to eyeball how often the cache is actually being hit for a given device or domain. A healthy home network typically settles into a cache hit rate well above 80% once the cache has warmed up (a few hours after a cold start), since most devices repeatedly query the same small set of domains (telemetry, ad networks, frequently-used services).
+
+If the hit rate stays surprisingly low:
+
+- Check `maxItemsCount` isn't being hit and evicting entries prematurely.
+- Check `maxTime` isn't set unrealistically low.
+- Confirm it isn't just a recently-restarted container still warming up — see the note above.
+
+## Response time expectations
+
+| Path | Typical response time |
+|---|---|
+| Cache hit | Sub-millisecond |
+| Blocked domain | Sub-millisecond (no upstream call at all) |
+| Cache miss, `parallel_best` upstream | Roughly the fastest of the configured upstreams' own latency — typically single-digit to low double-digit milliseconds over DoH/DoT |
+
+If cache-miss lookups feel consistently slow, it's almost always an upstream/network issue rather than a Blocky one — see [Troubleshooting → Slow resolution](./troubleshooting#slow-resolution).

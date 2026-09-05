@@ -1,0 +1,46 @@
+---
+sidebar_position: 4
+title: Blocklists & Filtering
+---
+
+# Blocklists & Filtering
+
+Blocking is the main reason Blocky exists in this stack: every device on the network gets ad, tracker, and malware-domain blocking without installing anything locally.
+
+## How blocking works
+
+For every query, Blocky checks the requested domain (and its parent domains — blocking `doubleclick.net` also blocks `ads.doubleclick.net`) against a set of denylists. If it matches, and the client isn't on an allowlist for that entry, Blocky answers immediately without ever contacting an upstream resolver.
+
+### Block response type
+
+`blockType` controls what Blocky actually returns for a blocked domain:
+
+| Value | Behavior |
+|---|---|
+| `zeroIp` | Returns `0.0.0.0` (A) / `::` (AAAA) — the client gets "an answer," just a dead one. Fastest, most compatible. |
+| `nxDomain` | Returns `NXDOMAIN`, as if the domain doesn't exist at all. Some clients retry more aggressively on this. |
+| `192.168.x.x` (a literal IP) | Returns that IP instead — useful for redirecting to a local "blocked" landing page. |
+
+`zeroIp` is the default here — it's the most broadly compatible option and doesn't trigger extra retry behavior in some resolvers the way `NXDOMAIN` can.
+
+`blockTTL` controls how long clients/resolvers upstream of them are told to cache that blocked answer for — shorter values mean an allowlist fix takes effect faster network-wide, at the cost of slightly more repeat queries.
+
+## Choosing blocklists
+
+Some well-known, actively-maintained lists worth knowing about:
+
+| List | Focus |
+|---|---|
+| [StevenBlack/hosts](https://github.com/StevenBlack/hosts) | General-purpose ads + malware, widely used baseline |
+| [OISD](https://oisd.nl/) | Aggressively maintained, low false-positive rate, several tiers (`small`/`big`) |
+| [someonewhocares.org](https://someonewhocares.org/hosts/) | Long-running, conservative tracking list |
+| [URLhaus](https://urlhaus.abuse.ch/) | Active malware-hosting domains |
+
+Prefer a small number of well-maintained lists over piling on every list that exists — overlapping lists just mean slower refresh cycles for no extra blocking, and a badly-maintained list is the most common cause of "why is this legitimate site broken."
+
+## Diagnosing a false positive
+
+1. Confirm the domain is actually the one being blocked — browsers often load several third-party domains per page; use the query log (see [Monitoring & Logging](./monitoring-logging#query-log)) to see exactly what's being blocked while reproducing the issue.
+2. Grep the local copy of each denylist in `lists/` (or the source list on GitHub) to confirm which one it came from.
+3. Add it to the matching group's allowlist file.
+4. Refresh lists (above) and re-test.

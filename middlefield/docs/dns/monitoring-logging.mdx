@@ -1,0 +1,98 @@
+---
+sidebar_position: 7
+title: Monitoring & Logging
+---
+
+# Monitoring & Logging
+
+Blocky itself doesn't ship a UI — day-to-day visibility and control here comes from **blocky-ui**, a small dashboard container that sits on top of Blocky's REST API. The API and structured query log underneath it are also documented below, since they're what blocky-ui is calling and are still useful directly for scripting or when the dashboard itself is the thing that's broken.
+
+## blocky-ui
+
+Deployed as its own container alongside Blocky (see [Installation → docker-compose.yml](./installation#docker-composeyml)), reachable at `http://<host>:8080`. It talks to Blocky's REST API (`http://blocky:4000` internally) and provides:
+
+- **Live query log** — every query Blocky handles, with client, domain, record type, and why it was answered the way it was (cached / blocked / resolved / custom DNS), filterable by client and domain.
+- **Blocking toggle** — enable/disable blocking (or for a set duration), the same as calling `/api/blocking/enable`/`disable` directly — see [REST API](#rest-api) below.
+- **List refresh** — trigger an immediate re-download of denylists/allowlists without shelling into the host.
+- **Current config view** — a read view of the running `config.yml`, handy for confirming a change actually took effect after a restart.
+
+This is the first place to look for "what is this device doing" or "why did this domain get blocked" — see [Troubleshooting](./troubleshooting) for how it's used in practice.
+
+:::info
+blocky-ui is a thin client over Blocky's own API and query log — it doesn't store anything itself. If it's blank or erroring, the underlying data source (the API, or the query log backend) is almost always the actual problem; see [Installation → Verifying it's working](./installation#verifying-its-working) and the sections below.
+:::
+
+## REST API
+
+What blocky-ui calls under the hood, and also usable directly — e.g. from a script, or when troubleshooting whether an issue is in Blocky itself vs. the dashboard. Exposed on the HTTP port configured under `ports.http` (`4000` — see [Configuration → Ports & TLS](./configuration#ports--tls-doh--dot)):
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/blocking/status` | GET | Whether blocking is currently enabled, and which groups are active |
+| `/api/blocking/enable` | POST | Re-enable blocking |
+| `/api/blocking/disable?duration=5m` | POST | Temporarily disable blocking — useful when checking whether blocking is the cause of a broken site, see [Troubleshooting](./troubleshooting#a-specific-site-is-broken-suspected-false-positive) |
+| `/api/lists/refresh` | POST | Force an immediate re-download of all denylists/allowlists |
+| `/api/query` | POST | Run a one-off DNS query through Blocky's own resolution pipeline (useful for testing blocking/custom DNS rules without touching a real client) |
+
+Example: check whether a specific domain would be blocked, without waiting for a real device to try it:
+
+```bash
+curl -X POST http://<blocky-ip>:4000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "doubleclick.net", "type": "A"}'
+```
+
+## Query log
+
+This is the data source behind blocky-ui's live query log view above. Logging here is configured to write one **CSV file per day** to disk:
+
+```yaml
+queryLog:
+  type: csv
+  target: /app/logs
+  logRetentionDays: 30
+  fields:
+    - clientName
+    - clientIP
+    - question
+    - duration
+    - responseAnswer
+    - responseReason
+```
+
+| Field | What it holds |
+|---|---|
+| `clientName` | The querying device's resolved/known name, where available |
+| `clientIP` | The querying device's IP |
+| `question` | The domain (and record type) that was queried |
+| `duration` | How long the query took to answer |
+| `responseAnswer` | The actual answer returned (an IP, `0.0.0.0`, `NXDOMAIN`, etc.) |
+| `responseReason` | *Why* Blocky answered the way it did — `CACHED`, `BLOCKED`, `RESOLVED`, `CUSTOMDNS`, `CONDITIONAL` |
+
+`logRetentionDays` controls automatic pruning of old daily files — set it deliberately; query logs are, functionally, a record of every domain every device on the network has visited, so don't retain more than actually useful.
+
+This is the single most useful tool for diagnosing "why is this site broken" (was it blocked? by which list?) and "what is this device doing" (unexpected outbound domains are often the first sign of a compromised or overly chatty IoT device) — blocky-ui's query log view (above) covers most day-to-day needs, but the raw files are there for anything it doesn't, e.g.:
+
+```bash
+# Everything a specific device queried today
+grep ',10.0.0.50,' /app/logs/$(date +%Y-%m-%d).csv
+
+# Most-blocked domains today
+awk -F',' '$6 == "BLOCKED" {print $3}' /app/logs/$(date +%Y-%m-%d).csv | sort | uniq -c | sort -rn | head -20
+```
+
+:::tip
+Exact column order can shift if `fields` in `config.yml` is reordered — check the CSV header row rather than assuming the column positions above.
+:::
+
+## Log levels
+
+```yaml
+log:
+  level: info
+  format: text
+  timestamp: true
+  privacy: false
+```
+
+`info` is enough for normal operation. Bump to `debug` temporarily when actively troubleshooting a resolution issue (see [Troubleshooting](./troubleshooting)) — it's noisy enough that it's not worth leaving on permanently.

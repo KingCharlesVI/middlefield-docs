@@ -1,0 +1,118 @@
+---
+sidebar_position: 2
+title: Installation & Deployment
+---
+
+# Installation & Deployment
+
+Blocky runs as a single Docker container, deployed via Docker Compose alongside the rest of the Middlefield stack. This page covers how it's deployed, the directory layout on the host, and how updates and restarts are handled.
+
+## Directory layout
+
+```text
+/opt/middlefield/blocky/
+├── docker-compose.yml
+├── config.yml           # main Blocky configuration (see Configuration)
+├── lists/                # optional local blocklist/allowlist files
+└── data/
+    └── blocky.db          # query log (if using the sqlite/csv target)
+```
+
+Keeping `config.yml` outside the image (bind-mounted in) means it survives image updates and can be edited without rebuilding anything.
+
+## docker-compose.yml
+
+```yaml
+services:
+  blocky:
+    image: ghcr.io/0xerr0r/blocky:latest
+    container_name: blocky
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "4000:4000/tcp"   # HTTP API
+    environment:
+      - TZ=America/New_York
+    volumes:
+      - ./config.yml:/app/config.yml
+      - ./lists:/app/lists
+    cap_add:
+      - NET_BIND_SERVICE
+    healthcheck:
+      test: ["CMD", "/app/blocky", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  blocky-ui:
+    image: ghcr.io/0xerr0r/blocky-ui:latest
+    container_name: blocky-ui
+    restart: unless-stopped
+    depends_on:
+      - blocky
+    ports:
+      - "8080:8080"
+    environment:
+      - API_URL=http://blocky:4000
+```
+
+:::tip
+The exact env var blocky-ui expects to find Blocky's API at can shift between releases — check the version you're running against the [blocky-ui repo](https://github.com/0xERR0R/blocky-ui) if it comes up blank after deploying.
+:::
+
+:::info Why pin a tag instead of `latest`?
+`latest` is convenient for a homelab, but it means a `docker compose pull` can pull in a config-breaking change without warning. Pinning to a specific version (e.g. `ghcr.io/0xerr0r/blocky:v0.24`) and bumping deliberately is the safer habit — see [Upgrading](#upgrading) below.
+:::
+
+### Ports
+
+| Port | Protocol | Purpose |
+|---|---|---|
+| `53` | UDP/TCP | Standard DNS — this is what clients actually query |
+| `4000` | TCP | Blocky's HTTP REST API — used by blocky-ui and for scripted checks (see [Monitoring & Logging](./monitoring-logging)) |
+| `8080` | TCP | blocky-ui web dashboard |
+| `853` | TCP | DNS-over-TLS (only if configured — see [Configuration](./configuration#ports--tls-doh--dot)) |
+
+Binding to port 53 requires either running the container as root or granting `NET_BIND_SERVICE`, and requires nothing else on the host already listening on 53 — see [Troubleshooting](./troubleshooting#port-53-already-in-use) if the container fails to start with an "address already in use" error.
+
+## Starting it up
+
+```bash
+cd /opt/middlefield/blocky
+docker compose up -d
+docker compose logs -f blocky
+```
+
+A healthy startup log ends with Blocky reporting the resolver chain it built from `config.yml` and that it's listening on `:53`.
+
+## Verifying it's working
+
+From the Docker host or any machine pointed at it:
+
+```bash
+dig @<blocky-ip> example.com
+```
+
+A response with an `ANSWER SECTION` and a fast `Query time` confirms basic resolution is working. To confirm blocking is active, query a known ad/tracker domain from a blocklist you've enabled:
+
+```bash
+dig @<blocky-ip> doubleclick.net
+```
+
+This should return `0.0.0.0` (or `NXDOMAIN`, depending on `blockType` — see [Blocklists](./blocklists#block-response-type)) rather than a real IP.
+
+Then confirm the dashboard can reach Blocky: open `http://<host>:8080` and check the query log/blocking status load without errors — see [Monitoring & Logging](./monitoring-logging) for what's actually on it.
+
+## Upgrading
+
+1. Check the [Blocky release notes](https://github.com/0xERR0R/blocky/releases) for breaking config changes — major versions occasionally rename or restructure config keys.
+2. Update the image tag in `docker-compose.yml`.
+3. `docker compose pull && docker compose up -d`.
+4. Tail the logs and re-run the `dig` checks above.
+
+Because clients depend on this resolver for *everything*, including resolving the update infrastructure for other services, treat Blocky upgrades as higher-risk than most other containers in the stack — do them when you're around to notice if something breaks, not right before bed.
+
+## Restart behavior
+
+`restart: unless-stopped` means Blocky comes back automatically after a host reboot or crash. While Blocky is down, any device pointed at it as its DNS server will fail to resolve anything — there's currently no automatic secondary/fallback per device (see [Network Setup](./network-setup)), so a restart is briefly disruptive to whatever's configured to use it.

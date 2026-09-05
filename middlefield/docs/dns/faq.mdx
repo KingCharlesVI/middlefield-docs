@@ -1,0 +1,50 @@
+---
+sidebar_position: 10
+title: FAQ
+---
+
+# FAQ
+
+### Is my browsing history logged somewhere?
+
+Query logging is on locally (see [Monitoring & Logging → Query log](./monitoring-logging#query-log)), which means the domains devices resolve are recorded for a limited retention period (`logRetentionDays`), on the Docker host, for troubleshooting and network visibility — not sent anywhere external. It's not a full browsing history (no URLs/paths, just hostnames), but it is more visibility than a typical ISP resolver setup gives you by default.
+
+### Why does a site work on my phone's cellular data but not on WiFi here?
+
+Almost always blocking. On cellular, the device isn't using Blocky at all, so nothing gets blocked. See [Blocklists → Diagnosing a false positive](./blocklists#diagnosing-a-false-positive).
+
+### Can I add my own custom blocklist?
+
+Yes — add a URL (or a local file path under `lists/`, mounted into the container) under `blocking.denylists` in a new or existing group. See [Blocklists → How blocking works](./blocklists#how-blocking-works).
+
+### Can I whitelist a specific site for just my device, but keep it blocked for everyone else?
+
+Not currently — blocking here applies the same way to every device, so an allowlist entry lets a domain through for everyone rather than just one client. Blocky does support grouping clients and assigning different blocklists per group, which would allow this, but that's not set up here today.
+
+### Does this slow down browsing?
+
+The opposite, in steady state — cached and blocked responses are answered locally in well under a millisecond, and blocked ad/tracker requests never even get a chance to load, which often makes pages *feel* faster than with DNS blocking off. See [Caching & Performance](./caching-performance).
+
+### What happens if Blocky goes down?
+
+Right now: any device manually configured to use Blocky as its DNS server loses resolution entirely until it's back (there's no automatic secondary/fallback configured per-device today). Everything else on the network — anything not yet pointed at Blocky — is unaffected, since it was never depending on it in the first place. See [Network Setup](./network-setup) for the current setup and the plan to move this to the router, where a proper fallback becomes worth configuring.
+
+### Can I use this DNS server from outside the house?
+
+Not currently exposed to the internet, and there's no plan to change that — DNS-over-TLS/HTTPS could technically be enabled for remote use (see [Configuration → Ports & TLS](./configuration#ports--tls-doh--dot)), but running an open recursive resolver on the internet is a well-known abuse vector (DNS amplification), so this would need proper access control first.
+
+### How do I check if a specific domain is blocked, without querying it from a real device?
+
+Easiest way is the query log in [blocky-ui](./monitoring-logging#blocky-ui) — it shows every query and why it was answered the way it was, or you can run a query directly through Blocky's API:
+
+```bash
+curl -X POST http://<blocky-ip>:4000/api/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "example.com", "type": "A"}'
+```
+
+See [Monitoring & Logging → REST API](./monitoring-logging#rest-api).
+
+### Something looks broken and none of this page covers it
+
+Start at [Troubleshooting](./troubleshooting).

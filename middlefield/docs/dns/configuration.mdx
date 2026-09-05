@@ -1,0 +1,35 @@
+---
+sidebar_position: 3
+title: Configuration Reference
+---
+
+# Configuration Reference
+
+Blocky is configured through a single YAML file (`config.yml`), reloaded by restarting the service (some sections, like blocklists, can be refreshed live via the API/Dashboard — see [Blocklists](./blocklists)). This page walks through the sections that matter, roughly in the order Blocky evaluates them.
+
+## Upstream resolvers
+
+Where queries go once they're not answered locally, cached, or blocked.
+
+- 1.1.1.1
+- 1.0.0.1
+
+## Blocking
+
+See [Blocklists](./blocklists):
+
+## Caching
+
+See [Caching & Performance](./caching-performance)
+
+## Query logging
+
+See [Monitoring & Logging](./monitoring-logging)
+
+## Ports & TLS (DoH / DoT)
+
+See [Technical](../technical/overview)
+
+## Logging
+
+Basic info, such as the status of the DNS server, is logged to the console. Nothing else.
