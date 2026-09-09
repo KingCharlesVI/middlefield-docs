@@ -20,7 +20,7 @@ Since DNS is currently set per-device rather than at the router (see [Network Se
    ```bash
    dig @127.0.0.1 example.com
    ```
-   If this fails but the process is running, check for a config error in the logs — Blocky logs a clear error and can fail to start if `blocky/config.yml` has invalid YAML or an unknown key after an upgrade (see [Installation → Upgrading](./installation#upgrading)).
+   If this fails but the process is running, check for a config error in the logs — Blocky logs a clear error and can fail to start if `blocky/config.yml` has invalid YAML or an unknown key after an upgrade.
 3. **Restart it:**
    ```bash
    pkill blocky
