@@ -53,8 +53,6 @@ flowchart LR
 | **blocky-ui** | Web dashboard on top of Blocky's API — live query log, blocking toggle, list refresh, and current config at a glance. See [Monitoring & Logging](./monitoring-logging). |
 | **Router (DHCP)** | *Planned* — will hand out Blocky's IP as the DNS server to every device on the LAN. Devices are configured individually for now — see [Network Setup](./network-setup). |
 
-See [Installation](./installation) for how the containers are deployed, [Configuration](./configuration) for the full config reference, and [Network Setup](./network-setup) for how clients actually end up pointed at it.
-
 :::info
 Blocky itself doesn't ship a UI — **blocky-ui** is a separate, small container that provides one on top of Blocky's REST API. Day-to-day state (is blocking on, what's being blocked right now, live query log) is checked there rather than via raw `curl` calls — see [Monitoring & Logging](./monitoring-logging).
 :::
