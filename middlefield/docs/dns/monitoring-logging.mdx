@@ -5,11 +5,11 @@ title: Monitoring & Logging
 
 # Monitoring & Logging
 
-Blocky itself doesn't ship a UI — day-to-day visibility and control here comes from **blocky-ui**, a small dashboard container that sits on top of Blocky's REST API. The API and structured query log underneath it are also documented below, since they're what blocky-ui is calling and are still useful directly for scripting or when the dashboard itself is the thing that's broken.
+Blocky itself doesn't ship a UI — day-to-day visibility and control here comes from **blocky-ui**, a small dashboard process (run from its own `blocky-ui` folder, alongside `blocky`) that sits on top of Blocky's REST API. The API and structured query log underneath it are also documented below, since they're what blocky-ui is calling and are still useful directly for scripting or when the dashboard itself is the thing that's broken.
 
 ## blocky-ui
 
-Deployed as its own container alongside Blocky (see [Installation → docker-compose.yml](./installation#docker-composeyml)), reachable at `http://<host>:8080`. It talks to Blocky's REST API (`http://blocky:4000` internally) and provides:
+Deployed on its own alongside Blocky and provides:
 
 - **Live query log** — every query Blocky handles, with client, domain, record type, and why it was answered the way it was (cached / blocked / resolved / custom DNS), filterable by client and domain.
 - **Blocking toggle** — enable/disable blocking (or for a set duration), the same as calling `/api/blocking/enable`/`disable` directly — see [REST API](#rest-api) below.
@@ -49,7 +49,7 @@ This is the data source behind blocky-ui's live query log view above. Logging he
 ```yaml
 queryLog:
   type: csv
-  target: /app/logs
+  target: ./logs
   logRetentionDays: 30
   fields:
     - clientName
@@ -75,10 +75,10 @@ This is the single most useful tool for diagnosing "why is this site broken" (wa
 
 ```bash
 # Everything a specific device queried today
-grep ',10.0.0.50,' /app/logs/$(date +%Y-%m-%d).csv
+grep ',10.0.0.50,' blocky/logs/$(date +%Y-%m-%d).csv
 
 # Most-blocked domains today
-awk -F',' '$6 == "BLOCKED" {print $3}' /app/logs/$(date +%Y-%m-%d).csv | sort | uniq -c | sort -rn | head -20
+awk -F',' '$6 == "BLOCKED" {print $3}' blocky/logs/$(date +%Y-%m-%d).csv | sort | uniq -c | sort -rn | head -20
 ```
 
 :::tip
@@ -95,4 +95,6 @@ log:
   privacy: false
 ```
 
-`info` is enough for normal operation. Bump to `debug` temporarily when actively troubleshooting a resolution issue (see [Troubleshooting](./troubleshooting)) — it's noisy enough that it's not worth leaving on permanently.
+`info` is enough for normal operation. Bump to `debug` temporarily when actively troubleshooting a resolution issue.
+
+Since Blocky runs as a plain binary rather than under a container runtime, these logs go to stdout of whatever launched it (`nohup.out`, the `screen`/`tmux` scrollback, etc.) rather than to `docker compose logs` — check however it was started to find where that output is landing.
